@@ -1,0 +1,16 @@
+# File Rahasia & Database Lokal
+credentials.json
+database.db
+
+# Folder Virtual Environment Python
+# (termasuk venv di dalam functions)
+venv/
+functions/venv/
+
+# File & Folder Cache
+__pycache__/
+*.pyc
+
+# File Lokal Firebase (tidak boleh diunggah)
+.firebaserc
+firebase-debug.log*

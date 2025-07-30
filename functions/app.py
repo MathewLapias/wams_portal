@@ -116,16 +116,20 @@ def get_gspread_client():
         "https://www.googleapis.com/auth/drive.file",
         "https://www.googleapis.com/auth/drive"
     ]
+    
     creds_dict = app.config.get('GCP_CREDS_DICT')
+    
     if creds_dict:
+        # Metode untuk server Firebase (sudah benar)
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         return gspread.authorize(creds)
     else:
-        print("PERINGATAN: GCP_CREDS_DICT tidak ditemukan, fallback lokal digunakan.")
-        # Fallback ini bisa diubah jika Anda ingin testing lokal dengan file
-        # Untuk sekarang, kita biarkan None agar jelas saat ada masalah
+        # Metode fallback untuk development lokal (INI YANG DIPERBAIKI)
+        print("PERINGATAN: GCP_CREDS_DICT tidak ditemukan. Mencoba fallback dari file credentials.json.")
         try:
-            return gspread.service_account(filename="credentials.json", scopes=scope)
+            # Menggunakan metode modern untuk file lokal yang tidak mencari APPDATA
+            creds = Credentials.from_service_account_file("credentials.json", scopes=scope)
+            return gspread.authorize(creds)
         except Exception as e:
             print(f"Gagal memuat credentials.json lokal: {e}")
             return None

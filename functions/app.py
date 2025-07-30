@@ -20,8 +20,6 @@ from collections import Counter
 from sqlalchemy import func
 import json
 import pytz
-from firebase_functions import options
-from firebase_admin import initialize_app, functions
 import openpyxl
 from openpyxl.utils.dataframe import dataframe_to_rows
 import io
@@ -40,24 +38,10 @@ def to_wita_filter(utc_dt):
     wita_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(wita_tz)
     return wita_dt.strftime('%Y-%m-%d %H:%M:%S')
 
-# --- KONFIGURASI FIREBASE, DATABASE, KUNCI RAHASIA, & LOGIN ---
-# Atur region server agar lebih dekat ke Indonesia (WAJIB untuk Firebase Functions)
-options.set_global_options(region=options.SupportedRegion.ASIA_SOUTHEAST1)
-initialize_app()
-config = functions.config()
-
-# Baca konfigurasi dari Environment Variables Firebase
-try:
-    app.config['SQLALCHEMY_DATABASE_URI'] = config.wams.database_url
-    app.config['SECRET_KEY'] = config.wams.secret_key
-    # Ubah kredensial Google menjadi dictionary
-    GCP_CREDS_DICT = json.loads(config.wams.gcp_credentials)
-except Exception as e:
-    print(f"PERINGATAN: Gagal memuat config Firebase. Pastikan env var sudah di-set. Error: {e}")
-    # Fallback untuk development lokal jika env var tidak di-set
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database.db')
-    app.config['SECRET_KEY'] = 'kunci-rahasia-lokal-anda'
-    GCP_CREDS_DICT = None
+# --- KONFIGURASI FLASK ---
+app.config.setdefault('SECRET_KEY', 'default-secret-key')
+app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///default.db')
+app.config.setdefault('GCP_CREDS_DICT', None)
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -131,9 +115,9 @@ MONTH_MAP = {
 # --- FUNGSI HELPER & PEMROSESAN ---
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/spreadsheets', "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
-    if GCP_CREDS_DICT:
+    if app.config.get('GCP_CREDS_DICT'):
         # Gunakan kredensial dari Firebase config jika ada
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(GCP_CREDS_DICT, scope)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(app.config['GCP_CREDS_DICT'], scope)
     else:
         # Fallback ke file credentials.json untuk development lokal
         creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)

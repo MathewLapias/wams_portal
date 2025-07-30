@@ -1,15 +1,40 @@
 # functions/main.py
+import os
+import json
 from firebase_functions import https_fn, options
-from firebase_admin import initialize_app
-from app import app
+from firebase_admin import initialize_app, functions
+from app import app, db
 
-# Atur region server agar lebih dekat ke Indonesia
+# --- INISIALISASI FIREBASE (HANYA DI SINI) ---
 options.set_global_options(region=options.SupportedRegion.ASIA_SOUTHEAST1)
-
 initialize_app()
+config = functions.config()
 
+# --- MENYUNTIKKAN KONFIGURASI KE APLIKASI FLASK ---
+# Baca konfigurasi dari Environment Variables Firebase dan terapkan ke app Flask
+try:
+    app.config['SQLALCHEMY_DATABASE_URI'] = config.wams.database_url
+    app.config['SECRET_KEY'] = config.wams.secret_key
+    # Simpan kredensial Google di config Flask agar bisa diakses di seluruh app
+    app.config['GCP_CREDS_DICT'] = json.loads(config.wams.gcp_credentials)
+except Exception:
+    # Fallback untuk development lokal jika env var tidak di-set
+    print("PERINGATAN: Gagal memuat config Firebase. Menggunakan konfigurasi lokal.")
+    db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
+    app.config['SECRET_KEY'] = 'kunci-rahasia-lokal-anda'
+    app.config['GCP_CREDS_DICT'] = None
+
+# --- ENTRY POINT UNTUK CLOUD FUNCTION ---
 @https_fn.on_request()
 def wams_app(req: https_fn.Request) -> https_fn.Response:
     with app.request_context(req.environ):
         return app.full_dispatch_request()
-    
+
+# --- RUTE SEMENTARA UNTUK INISIALISASI DATABASE ---
+# HAPUS SETELAH DIGUNAKAN PERTAMA KALI
+@app.route('/init-db-first-time')
+def init_db():
+    with app.app_context():
+        db.create_all()
+    return "Database tables created successfully!"

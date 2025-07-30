@@ -31,15 +31,14 @@ app.config.setdefault('SECRET_KEY', 'default-secret-key')
 app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///default.db')
 app.config.setdefault('GCP_CREDS_DICT', None)
 
-# --- INISIALISASI EKSTENSI ---
+# Inisialisasi Ekstensi
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
-login_manager.login_message = "Anda harus login untuk mengakses halaman ini."
-login_manager.login_message_category = "warning"
 
+# --- MODEL, FORM, DECORATOR, DAN KONSTANTA ---
 @app.template_filter('to_wita')
 def to_wita_filter(utc_dt):
     if utc_dt is None: return ""
@@ -47,8 +46,6 @@ def to_wita_filter(utc_dt):
     wita_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(wita_tz)
     return wita_dt.strftime('%Y-%m-%d %H:%M:%S')
 
-
-# --- DECORATOR & MODEL ---
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -71,26 +68,22 @@ class ActivityLog(db.Model):
     username = db.Column(db.String(80), nullable=False)
     action = db.Column(db.String(255), nullable=False)
 
-    def __repr__(self):
-        return f'<Log {self.timestamp}: {self.username} - {self.action}>'
-
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 # --- FORM ---
 class RegisterForm(FlaskForm):
-    username = StringField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "Username"})
-    password = PasswordField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "Password"})
+    username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
+    password = PasswordField(validators=[InputRequired(), Length(min=4, max=20)])
     submit = SubmitField("Buat Akun")
-
     def validate_username(self, username):
         if User.query.filter_by(username=username.data).first():
-            raise ValidationError("Username sudah terdaftar. Silakan gunakan username lain.")
+            raise ValidationError("Username sudah terdaftar.")
 
 class LoginForm(FlaskForm):
-    username = StringField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "Username"})
-    password = PasswordField(validators=[InputRequired(), Length(min=4, max=20)], render_kw={"placeholder": "Password"})
+    username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
+    password = PasswordField(validators=[InputRequired(), Length(min=4, max=20)])
     submit = SubmitField("Login")
 
 # --- KONFIGURASI & DATA ---
@@ -108,26 +101,16 @@ MONTH_MAP = {
     "Juli": 7, "Agustus": 8, "September": 9, "Oktober": 10, "November": 11, "Desember": 12
 }
 
-# --- FUNGSI HELPER & PEMROSESAN ---
+# --- FUNGSI HELPER ---
 def get_gspread_client():
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        'https://www.googleapis.com/auth/spreadsheets',
-        "https://www.googleapis.com/auth/drive.file",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    
+    scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/spreadsheets', "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
     creds_dict = app.config.get('GCP_CREDS_DICT')
-    
     if creds_dict:
-        # Metode untuk server Firebase (sudah benar)
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         return gspread.authorize(creds)
     else:
-        # Metode fallback untuk development lokal (INI YANG DIPERBAIKI)
         print("PERINGATAN: GCP_CREDS_DICT tidak ditemukan. Mencoba fallback dari file credentials.json.")
         try:
-            # Menggunakan metode modern untuk file lokal yang tidak mencari APPDATA
             creds = Credentials.from_service_account_file("credentials.json", scopes=scope)
             return gspread.authorize(creds)
         except Exception as e:

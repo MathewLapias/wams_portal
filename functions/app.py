@@ -9,7 +9,7 @@ from flask_bcrypt import Bcrypt
 from datetime import datetime
 from functools import wraps
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 import pandas as pd
 import numpy as np
 from calendar import monthrange
@@ -114,14 +114,26 @@ MONTH_MAP = {
 
 # --- FUNGSI HELPER & PEMROSESAN ---
 def get_gspread_client():
-    scope = ["https://spreadsheets.google.com/feeds", 'https://www.googleapis.com/auth/spreadsheets', "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
-    if app.config.get('GCP_CREDS_DICT'):
-        # Gunakan kredensial dari Firebase config jika ada
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(app.config['GCP_CREDS_DICT'], scope)
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        'https://www.googleapis.com/auth/spreadsheets',
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
+    creds_dict = app.config.get('GCP_CREDS_DICT')
+
+    if creds_dict:
+        # Menggunakan metode autentikasi yang lebih baru
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        client = gspread.authorize(creds)
+        return client
     else:
-        # Fallback ke file credentials.json untuk development lokal
-        creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
-    return gspread.authorize(creds)
+        # Fallback untuk development lokal
+        # Perhatikan: metode ini mungkin memerlukan file credentials.json
+        print("PERINGATAN: GCP_CREDS_DICT tidak ditemukan, mencoba fallback lokal.")
+        # Sesuaikan fallback ini jika diperlukan untuk testing lokal
+        return None
 
 def get_data_from_sheet(client, file_name, sheet_name):
     try:

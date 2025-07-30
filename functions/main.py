@@ -30,11 +30,3 @@ except Exception:
 def wams_app(req: https_fn.Request) -> https_fn.Response:
     with app.request_context(req.environ):
         return app.full_dispatch_request()
-
-# --- RUTE SEMENTARA UNTUK INISIALISASI DATABASE ---
-# HAPUS SETELAH DIGUNAKAN PERTAMA KALI
-@app.route('/init-db-first-time')
-def init_db():
-    with app.app_context():
-        db.create_all()
-    return "Database tables created successfully!"

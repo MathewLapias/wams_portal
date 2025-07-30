@@ -766,17 +766,3 @@ def get_modul_data(kppn_id, modul_id):
     except Exception as e:
         print(f"!!! SERVER ERROR ({kppn_id}/{modul_id}): {e} !!!")
         return jsonify({"error": f"Terjadi kesalahan di server: {e}"}), 500
-
-@app.cli.command("create-admin")
-def create_admin_command():
-    """Membuat user admin awal."""
-    db.create_all()
-    if User.query.filter_by(username='admin').first():
-        print("User 'admin' sudah ada.")
-        return
-    hashed_password = bcrypt.generate_password_hash('adminpassword').decode('utf-8')
-    admin_user = User(username='admin', password=hashed_password, role='admin')
-    db.session.add(admin_user)
-    db.session.commit()
-    print("User 'admin' berhasil dibuat dengan password 'adminpassword'.")
-    print("Segera ganti password ini setelah login!")

@@ -1,5 +1,4 @@
-# app.py
-from flask import Flask, jsonify, render_template, request, redirect, url_for, flash
+from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
@@ -23,26 +22,16 @@ import pytz
 import openpyxl
 from openpyxl.utils.dataframe import dataframe_to_rows
 import io
-from flask import Response
-from calendar import monthrange
-import pandas as pd
 
+# Inisialisasi Aplikasi Flask dengan path template & static yang benar
 app = Flask(__name__, template_folder='../templates', static_folder='../public')
 
-@app.template_filter('to_wita')
-def to_wita_filter(utc_dt):
-    """Mengubah datetime UTC ke WITA dan memformatnya."""
-    if utc_dt is None:
-        return ""
-    wita_tz = pytz.timezone('Asia/Makassar')
-    wita_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(wita_tz)
-    return wita_dt.strftime('%Y-%m-%d %H:%M:%S')
-
-# --- KONFIGURASI FLASK ---
+# --- KONFIGURASI FLASK STANDAR (DIISI OLEH main.py) ---
 app.config.setdefault('SECRET_KEY', 'default-secret-key')
 app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///default.db')
 app.config.setdefault('GCP_CREDS_DICT', None)
 
+# --- INISIALISASI EKSTENSI ---
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager()
@@ -50,6 +39,13 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 login_manager.login_message = "Anda harus login untuk mengakses halaman ini."
 login_manager.login_message_category = "warning"
+
+@app.template_filter('to_wita')
+def to_wita_filter(utc_dt):
+    if utc_dt is None: return ""
+    wita_tz = pytz.timezone('Asia/Makassar')
+    wita_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(wita_tz)
+    return wita_dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
 # --- DECORATOR & MODEL ---
@@ -120,20 +116,19 @@ def get_gspread_client():
         "https://www.googleapis.com/auth/drive.file",
         "https://www.googleapis.com/auth/drive"
     ]
-
     creds_dict = app.config.get('GCP_CREDS_DICT')
-
     if creds_dict:
-        # Menggunakan metode autentikasi yang lebih baru
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-        client = gspread.authorize(creds)
-        return client
+        return gspread.authorize(creds)
     else:
-        # Fallback untuk development lokal
-        # Perhatikan: metode ini mungkin memerlukan file credentials.json
-        print("PERINGATAN: GCP_CREDS_DICT tidak ditemukan, mencoba fallback lokal.")
-        # Sesuaikan fallback ini jika diperlukan untuk testing lokal
-        return None
+        print("PERINGATAN: GCP_CREDS_DICT tidak ditemukan, fallback lokal digunakan.")
+        # Fallback ini bisa diubah jika Anda ingin testing lokal dengan file
+        # Untuk sekarang, kita biarkan None agar jelas saat ada masalah
+        try:
+            return gspread.service_account(filename="credentials.json", scopes=scope)
+        except Exception as e:
+            print(f"Gagal memuat credentials.json lokal: {e}")
+            return None
 
 def get_data_from_sheet(client, file_name, sheet_name):
     try:

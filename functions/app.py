@@ -23,10 +23,10 @@ import openpyxl
 from openpyxl.utils.dataframe import dataframe_to_rows
 import io
 
-# Inisialisasi Aplikasi Flask dengan path template & static yang benar
+# Inisialisasi Aplikasi Flask dengan path yang benar
 app = Flask(__name__, template_folder='../templates', static_folder='../public')
 
-# --- KONFIGURASI FLASK STANDAR (DIISI OLEH main.py) ---
+# Konfigurasi default (akan ditimpa oleh main.py saat deploy)
 app.config.setdefault('SECRET_KEY', 'default-secret-key')
 app.config.setdefault('SQLALCHEMY_DATABASE_URI', 'sqlite:///default.db')
 app.config.setdefault('GCP_CREDS_DICT', None)
@@ -72,7 +72,6 @@ class ActivityLog(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- FORM ---
 class RegisterForm(FlaskForm):
     username = StringField(validators=[InputRequired(), Length(min=4, max=20)])
     password = PasswordField(validators=[InputRequired(), Length(min=4, max=20)])
@@ -86,20 +85,10 @@ class LoginForm(FlaskForm):
     password = PasswordField(validators=[InputRequired(), Length(min=4, max=20)])
     submit = SubmitField("Login")
 
-# --- KONFIGURASI & DATA ---
-KPPN_LIST = {
-    "manado": "KPPN Manado", "tahuna": "KPPN Tahuna", "kotamobagu": "KPPN Kotamobagu", "bitung": "KPPN Bitung"
-}
-MODUL_LIST = {
-    "sp2d": "Durasi SP2D", "adk": "ADK Kontraktual", "pmrt": "Penolakan PMRT", "karwas": "Karwas UP/TUP", "lainnya": "Modul Lainnya"
-}
-FILE_MAPPING = {
-    "sp2d": "Durasi SP2D", "adk": "ADK Kontraktual", "pmrt": "Penolakan PMRT", "karwas": "Karwas UP_TUP", "lainnya": "Modul Lainnya"
-}
-MONTH_MAP = {
-    "Januari": 1, "Februari": 2, "Maret": 3, "April": 4, "Mei": 5, "Juni": 6,
-    "Juli": 7, "Agustus": 8, "September": 9, "Oktober": 10, "November": 11, "Desember": 12
-}
+KPPN_LIST = {"manado": "KPPN Manado", "tahuna": "KPPN Tahuna", "kotamobagu": "KPPN Kotamobagu", "bitung": "KPPN Bitung"}
+MODUL_LIST = {"sp2d": "Durasi SP2D", "adk": "ADK Kontraktual", "pmrt": "Penolakan PMRT", "karwas": "Karwas UP/TUP", "lainnya": "Modul Lainnya"}
+FILE_MAPPING = {"sp2d": "Durasi SP2D", "adk": "ADK Kontraktual", "pmrt": "Penolakan PMRT", "karwas": "Karwas UP_TUP", "lainnya": "Modul Lainnya"}
+MONTH_MAP = {"Januari": 1, "Februari": 2, "Maret": 3, "April": 4, "Mei": 5, "Juni": 6, "Juli": 7, "Agustus": 8, "September": 9, "Oktober": 10, "November": 11, "Desember": 12}
 
 # --- FUNGSI HELPER ---
 def get_gspread_client():
